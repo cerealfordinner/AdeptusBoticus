@@ -1,4 +1,4 @@
-﻿using AdeptusBoticus;
+﻿using System.Xml.Linq;
+using AdeptusBoticus;
 
-var webScrapingService = new WebScrapingService("https://www.warhammer-community.com/en-us/warhammer-40000/");
-webScrapingService.CheckForNewArticles();
+var feedDoc = FeedService.GetFeedAsync("warhammer-community.com/feed/");
