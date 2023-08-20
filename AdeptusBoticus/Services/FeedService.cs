@@ -10,6 +10,35 @@ public class FeedService
     {
         FeedUrl = feedUrl;
     }
+
+    public static async Task RunAsync()
+    {
+        var storageService = new StorageService();
+
+        while (true)
+        {
+            // Get latest article that meets the category criteria
+            var feedService = new FeedService("https://www.warhammer-community.com/feed/");
+            var xmlDoc = await feedService.GetFeedAsync();
+            Article latestArticle = feedService.GetLatestWarhammerArticle(xmlDoc);
+
+            // Get the dateTime of the last article posted
+            DateTime latestPostedArticleDate = storageService.GetLastPostedArticleDate();
+            if (latestArticle != null && latestArticle.PublicationDate > latestPostedArticleDate)
+            {
+                storageService.UpdateLastPostedArticleDate(latestArticle.PublicationDate);
+                Console.WriteLine(latestArticle.Id);
+            }
+            else
+            {
+                Console.WriteLine("No new article found");
+            }
+
+            int waitTimeInMinutes = 1;
+            await Task.Delay(TimeSpan.FromMinutes(waitTimeInMinutes));
+        }
+    }
+
     public async Task<XDocument> GetFeedAsync()
     {
         using var httpClient = new HttpClient();
@@ -32,6 +61,7 @@ public class FeedService
             
             Article latestArticle = new Article
             {
+                Id = latestArticleElement.Element("guid").Value.GetArticleIdFromlink(),
                 Title = latestArticleElement.Element("title")?.Value,
                 Link = latestArticleElement.Element("link")?.Value,
            };
