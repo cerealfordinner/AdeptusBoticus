@@ -1,5 +1,7 @@
 ﻿using System.Xml;
 using System.Xml.Linq;
+using Discord;
+using Discord.WebSocket;
 
 namespace AdeptusBoticus;
 
@@ -12,6 +14,23 @@ public class FeedService
     }
 
     public static async Task RunAsync()
+    {
+
+        var client = new DiscordSocketClient();
+        client.Log += LogAsync;
+        client.Ready += async () =>
+        {
+            Console.WriteLine("Bot is ready!");
+            await CheckForNewArticle(client);
+            await Task.CompletedTask;
+        };
+        await client.LoginAsync(Discord.TokenType.Bot, "MTEzODYxMjQ3NTQ4MzQwMjI3MA.GZZ53G.QE6TUOXrL1AVpfT8krK-qIk0K0TSDhFbDk_tF4");
+        await client.StartAsync();
+
+        await Task.Delay(-1);
+    }
+
+    private static async Task CheckForNewArticle(DiscordSocketClient client)
     {
         var storageService = new StorageService();
 
@@ -26,6 +45,7 @@ public class FeedService
             DateTime latestPostedArticleDate = storageService.GetLastPostedArticleDate();
             if (latestArticle != null && latestArticle.PublicationDate > latestPostedArticleDate)
             {
+                await PostLatestArticle(client, latestArticle.Link);
                 storageService.UpdateLastPostedArticleDate(latestArticle.PublicationDate);
                 Console.WriteLine(latestArticle.Id);
             }
@@ -36,6 +56,20 @@ public class FeedService
 
             int waitTimeInMinutes = 1;
             await Task.Delay(TimeSpan.FromMinutes(waitTimeInMinutes));
+        }
+    }
+
+    private static async Task LogAsync(LogMessage message)
+    {
+        Console.WriteLine($"Log message: {message}");
+    }
+
+    private static async Task PostLatestArticle(DiscordSocketClient client, string articleLink)
+    {
+        var channel = client.GetChannel(1142958730162491462) as ISocketMessageChannel;
+        if (channel != null)
+        {
+            await channel.SendMessageAsync(articleLink);
         }
     }
 
@@ -61,7 +95,6 @@ public class FeedService
             
             Article latestArticle = new Article
             {
-                Id = latestArticleElement.Element("guid").Value.GetArticleIdFromlink(),
                 Title = latestArticleElement.Element("title")?.Value,
                 Link = latestArticleElement.Element("link")?.Value,
            };
