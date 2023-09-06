@@ -1,21 +1,33 @@
-﻿using System.Xml;
+﻿using System.Reflection.Metadata;
+using System.Xml;
 using System.Xml.Linq;
 using Discord;
 using Discord.WebSocket;
+using Microsoft.Extensions.Configuration;
 
 namespace AdeptusBoticus;
 
 public class FeedService
 {
-    public string FeedUrl { get; set; }
-    public FeedService(string feedUrl)
+    private readonly IConfiguration _configuration;
+    private string _discordApiKey;
+    private ulong _channelId;
+    private string _feedUrl;
+    public FeedService(IConfiguration configuration)
     {
-        FeedUrl = feedUrl;
+        _configuration = configuration;
+        // get all config values
+        _feedUrl = _configuration["FeedUrl"];
+        _discordApiKey = _configuration["DiscordApiKey"];
+        var ulongString = _configuration["ChannelId"];
+        if (ulong.TryParse(ulongString, out ulong channelId))
+        {
+            _channelId = channelId;
+        }
     }
 
-    public static async Task RunAsync()
+    public async Task RunAsync()
     {
-
         var client = new DiscordSocketClient();
         client.Log += LogAsync;
         client.Ready += async () =>
@@ -24,22 +36,21 @@ public class FeedService
             await CheckForNewArticle(client);
             await Task.CompletedTask;
         };
-        await client.LoginAsync(Discord.TokenType.Bot, "MTEzODYxMjQ3NTQ4MzQwMjI3MA.GZZ53G.QE6TUOXrL1AVpfT8krK-qIk0K0TSDhFbDk_tF4");
+        await client.LoginAsync(Discord.TokenType.Bot, _discordApiKey);
         await client.StartAsync();
 
         await Task.Delay(-1);
     }
 
-    private static async Task CheckForNewArticle(DiscordSocketClient client)
+    private  async Task CheckForNewArticle(DiscordSocketClient client)
     {
         var storageService = new StorageService();
 
         while (true)
         {
             // Get latest article that meets the category criteria
-            var feedService = new FeedService("https://www.warhammer-community.com/feed/");
-            var xmlDoc = await feedService.GetFeedAsync();
-            Article latestArticle = feedService.GetLatestWarhammerArticle(xmlDoc);
+            var xmlDoc = await GetFeedAsync(_feedUrl);
+            Article latestArticle = GetLatestWarhammerArticle(xmlDoc);
 
             // Get the dateTime of the last article posted
             DateTime latestPostedArticleDate = storageService.GetLastPostedArticleDate();
@@ -47,7 +58,7 @@ public class FeedService
             {
                 await PostLatestArticle(client, latestArticle.Link);
                 storageService.UpdateLastPostedArticleDate(latestArticle.PublicationDate);
-                Console.WriteLine(latestArticle.Id);
+                Console.WriteLine(latestArticle.Title);
             }
             else
             {
@@ -64,19 +75,19 @@ public class FeedService
         Console.WriteLine($"Log message: {message}");
     }
 
-    private static async Task PostLatestArticle(DiscordSocketClient client, string articleLink)
+    private async Task PostLatestArticle(DiscordSocketClient client, string articleLink)
     {
-        var channel = client.GetChannel(1142958730162491462) as ISocketMessageChannel;
+        var channel = client.GetChannel(_channelId) as ISocketMessageChannel;
         if (channel != null)
         {
             await channel.SendMessageAsync(articleLink);
         }
     }
 
-    public async Task<XDocument> GetFeedAsync()
+    public async Task<XDocument> GetFeedAsync(string feedUrl)
     {
         using var httpClient = new HttpClient();
-        string xmlContent = await httpClient.GetStringAsync(FeedUrl);
+        string xmlContent = await httpClient.GetStringAsync(feedUrl);
         XDocument xmlDoc = XDocument.Parse(xmlContent);
         return xmlDoc;
     }
