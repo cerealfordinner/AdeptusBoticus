@@ -1,7 +1,6 @@
-﻿using System.Reflection.Metadata;
-using System.Xml;
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 using Discord;
+using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 
@@ -10,6 +9,9 @@ namespace AdeptusBoticus;
 public class FeedService
 {
     private readonly IConfiguration _configuration;
+    private DiscordSocketClient _client;
+    private CommandService _commandService;
+    private static System.Timers.Timer _articleCheckTimer;
     private string _discordApiKey;
     private ulong _channelId;
     private string _feedUrl;
@@ -26,47 +28,52 @@ public class FeedService
         }
     }
 
-    public async Task RunAsync()
+    public async Task RunBotAsync()
     {
-        var client = new DiscordSocketClient();
-        client.Log += LogAsync;
-        client.Ready += async () =>
-        {
-            Console.WriteLine("Bot is ready!");
-            await CheckForNewArticle(client);
-            await Task.CompletedTask;
-        };
-        await client.LoginAsync(Discord.TokenType.Bot, _discordApiKey);
-        await client.StartAsync();
+        _client = new DiscordSocketClient();
+        _commandService = new CommandService();
+        _client.Log += LogAsync;
+        await _client.LoginAsync(Discord.TokenType.Bot, _discordApiKey);
+        await _client.StartAsync();
+
+        StartArticleCheckTimer();
 
         await Task.Delay(-1);
     }
 
-    private  async Task CheckForNewArticle(DiscordSocketClient client)
+    private void StartArticleCheckTimer()
+    {
+        _articleCheckTimer = new System.Timers.Timer
+        {
+            Interval = TimeSpan.FromMinutes(5).TotalMilliseconds,
+            AutoReset = true,
+            Enabled = true
+        };
+
+        _articleCheckTimer.Elapsed += async (sender, e) => await CheckForNewArticle();
+
+        _articleCheckTimer.Start();
+    }
+
+    public async Task CheckForNewArticle()
     {
         var storageService = new StorageService();
 
-        while (true)
+        // Get latest article that meets the category criteria
+        var xmlDoc = await GetFeedAsync(_feedUrl);
+        Article latestArticle = GetLatestWarhammerArticle(xmlDoc);
+
+        // Get the dateTime of the last article posted
+        DateTime latestPostedArticleDate = storageService.GetLastPostedArticleDate();
+        if (latestArticle != null && latestArticle.PublicationDate > latestPostedArticleDate)
         {
-            // Get latest article that meets the category criteria
-            var xmlDoc = await GetFeedAsync(_feedUrl);
-            Article latestArticle = GetLatestWarhammerArticle(xmlDoc);
-
-            // Get the dateTime of the last article posted
-            DateTime latestPostedArticleDate = storageService.GetLastPostedArticleDate();
-            if (latestArticle != null && latestArticle.PublicationDate > latestPostedArticleDate)
-            {
-                await PostLatestArticle(client, latestArticle.Link);
-                storageService.UpdateLastPostedArticleDate(latestArticle.PublicationDate);
-                Console.WriteLine(latestArticle.Title);
-            }
-            else
-            {
-                Console.WriteLine("No new article found");
-            }
-
-            int waitTimeInMinutes = 1;
-            await Task.Delay(TimeSpan.FromMinutes(waitTimeInMinutes));
+            await PostLatestArticle(_client, latestArticle.Link);
+            storageService.UpdateLastPostedArticleDate(latestArticle.PublicationDate);
+            Console.WriteLine(latestArticle.Title);
+        }
+        else
+        {
+            Console.WriteLine("No new article found");
         }
     }
 
