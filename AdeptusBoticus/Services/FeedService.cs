@@ -42,7 +42,7 @@ public class FeedService
         {
             _horusHersyChannelId = channelIdHH;
         }
-        _horusHeresyCategories = configuration.GetSection("Warhammer40K:categories")
+        _horusHeresyCategories = configuration.GetSection("WarhammerHorusHeresy:categories")
             .GetChildren()
             .Select(x => x.Value)
             .ToArray();
@@ -52,7 +52,7 @@ public class FeedService
         {
             _fantasyChannelId = channelIdFantasy;
         }
-        _fantasyCategories = configuration.GetSection("Warhammer40K:categories")
+        _fantasyCategories = configuration.GetSection("WarhammerFantasy:categories")
             .GetChildren()
             .Select(x => x.Value)
             .ToArray();
@@ -63,13 +63,19 @@ public class FeedService
         _client = new DiscordSocketClient();
         _commandService = new CommandService();
         _client.Log += LogAsync;
+
+        _client.Ready += ReadyAsync;
+
         await _client.LoginAsync(Discord.TokenType.Bot, _discordApiKey);
         await _client.StartAsync();
 
-        // StartArticleCheckTimer();
-        await CheckForNewArticle();
-
         await Task.Delay(-1);
+    }
+
+    private async Task ReadyAsync()
+    {
+        StartArticleCheckTimer();
+        await CheckForNewArticle();
     }
 
     private void StartArticleCheckTimer()
@@ -90,24 +96,37 @@ public class FeedService
     {
         var storageService = new StorageService();
 
-        // Get latest article that meets the category criteria
-        var xmlDoc = await GetFeedAsync(_feedUrl);
-        Article latest40KArticle = GetLatestWarhammerArticle(xmlDoc, _40kCategories);
-        Article latestHorusHersyArticle = GetLatestWarhammerArticle(xmlDoc, _horusHeresyCategories);
-        Article latestFantasyArticle = GetLatestWarhammerArticle(xmlDoc, _fantasyCategories);
+        DateTime latest40kArticleDate = storageService.GetLastPostedArticleDate(ArticleType.Warhammer40K);
+        DateTime latestHorusHeresyArticleDate = storageService.GetLastPostedArticleDate(ArticleType.WarhammerHorusHeresy);
+        DateTime latestFantasyArticleDate = storageService.GetLastPostedArticleDate(ArticleType.WarhammerFantasy);
 
-        // Get the dateTime of the last article posted
-        DateTime latestPostedArticleDate = storageService.GetLastPostedArticleDate();
-        if (latest40KArticle != null && latest40KArticle.PublicationDate > latestPostedArticleDate)
+        var xmlDoc = await GetFeedAsync(_feedUrl);
+        Article latest40KArticle = GetNewWarhammerArticle(xmlDoc, _40kCategories, ArticleType.Warhammer40K, latest40kArticleDate);
+        Article latestHorusHersyArticle = GetNewWarhammerArticle(xmlDoc, _horusHeresyCategories, ArticleType.WarhammerHorusHeresy, latestHorusHeresyArticleDate);
+        Article latestFantasyArticle = GetNewWarhammerArticle(xmlDoc, _fantasyCategories, ArticleType.WarhammerFantasy, latestFantasyArticleDate);
+
+        if (latest40KArticle != null || latestHorusHersyArticle != null || latestFantasyArticle != null)
         {
-            await PostLatestArticle(_client, latest40KArticle.Link);
-            storageService.UpdateLastPostedArticleDate(latest40KArticle.PublicationDate);
-            Console.WriteLine(latest40KArticle.Title);
+            if (latest40KArticle != null && latest40KArticle.PublicationDate > latest40kArticleDate)
+            {
+                await PostLatestArticle(_client, latest40KArticle);
+                storageService.UpdateLastPostedArticleDate(latest40KArticle);
+                Console.WriteLine(latest40KArticle.Title);
+            }
+            if (latestHorusHersyArticle != null && latestHorusHersyArticle.PublicationDate > latestHorusHeresyArticleDate)
+            {
+                await PostLatestArticle(_client, latestHorusHersyArticle);
+                storageService.UpdateLastPostedArticleDate(latestHorusHersyArticle);
+                Console.WriteLine(latestHorusHersyArticle.Title);
+            }
+            if (latestFantasyArticle != null && latestFantasyArticle.PublicationDate > latestFantasyArticleDate)
+            {
+                await PostLatestArticle(_client, latestFantasyArticle);
+                storageService.UpdateLastPostedArticleDate(latestFantasyArticle);
+                Console.WriteLine(latestFantasyArticle.Title);
+            }
         }
-        else
-        {
-            Console.WriteLine("No new article found");
-        }
+
     }
 
     private static async Task LogAsync(LogMessage message)
@@ -115,12 +134,27 @@ public class FeedService
         Console.WriteLine($"Log message: {message}");
     }
 
-    private async Task PostLatestArticle(DiscordSocketClient client, string articleLink)
+    private async Task PostLatestArticle(DiscordSocketClient client, Article article)
     {
-        var channel = client.GetChannel(_40kChannelId) as ISocketMessageChannel;
+        ulong channelId = new ulong();
+        switch (article.ArticleType)
+        {
+            case ArticleType.Warhammer40K:
+                channelId = _40kChannelId;
+                break;
+            case ArticleType.WarhammerHorusHeresy:
+                channelId = _horusHersyChannelId;
+                break;
+            case ArticleType.WarhammerFantasy:
+                channelId = _fantasyChannelId;
+                break;
+        }
+
+        var channel = client.GetChannel(channelId) as ISocketMessageChannel;
+
         if (channel != null)
         {
-            await channel.SendMessageAsync(articleLink);
+            await channel.SendMessageAsync(article.Link);
         }
     }
 
@@ -132,33 +166,32 @@ public class FeedService
         return xmlDoc;
     }
 
-    public Article GetLatestWarhammerArticle(XDocument xmlDoc, string[] categories)
+    public Article GetNewWarhammerArticle(XDocument xmlDoc, string[] categories, ArticleType articleType, DateTime lastArticleDate)
     {
-        var articles = xmlDoc.Descendants("item");
-        var latestArticleElement = articles.Where(x => x.Elements("category")
-        .Any(x => x.Value.Contains("40k") || x.Value.Contains("Warhammer 40k")))
+        var latestArticleElement = xmlDoc.Descendants("item")
+        .Where(item => item.Elements("category").Any(categoryElement => categories.Contains(categoryElement.Value)))
         .OrderByDescending(x => DateTimeHelper.GetPublicationDateFromElement(x))
         .FirstOrDefault();
 
         if (latestArticleElement != null)
         {
-            string dateString = latestArticleElement.Element("pubDate")?.Value;
-            
-            Article latestArticle = new Article
-            {
-                Title = latestArticleElement.Element("title")?.Value,
-                Link = latestArticleElement.Element("link")?.Value,
-           };
+            string articleDateString = latestArticleElement.Element("pubDate")?.Value;
+            DateTime.TryParse(articleDateString, out DateTime articleDate);
 
-            if(DateTime.TryParse(dateString, out DateTime date))
+            if (articleDate > lastArticleDate)
             {
-                latestArticle.PublicationDate = date;
+                return new Article
+                {
+                    Title = latestArticleElement.Element("title")?.Value,
+                    Link = latestArticleElement.Element("link")?.Value,
+                    ArticleType = articleType,
+                    PublicationDate = articleDate
+                };
             }
-
-            return latestArticle;
         }
 
         return null;
     }
 
 }
+
