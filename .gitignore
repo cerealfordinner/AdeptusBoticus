@@ -35,6 +35,5 @@ msbuild.wrn
 
 # Dev appsettings
 appsettings.dev.json
-AdeptusBoticus/Data/hh.txt
-AdeptusBoticus/Data/fantasy.txt
+Data/*.txt
 AdeptusBoticus/Data/40k.txt
