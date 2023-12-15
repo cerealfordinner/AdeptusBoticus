@@ -36,4 +36,3 @@ msbuild.wrn
 # Dev appsettings
 appsettings.dev.json
 Data/*.txt
-AdeptusBoticus/Data/40k.txt
