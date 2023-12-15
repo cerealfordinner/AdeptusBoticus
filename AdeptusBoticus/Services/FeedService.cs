@@ -10,7 +10,6 @@ public class FeedService
 {
     private readonly IConfiguration _configuration;
     private DiscordSocketClient _client;
-    private CommandService _commandService;
     private static System.Timers.Timer _articleCheckTimer;
     private string _discordApiKey;
     private ulong _40kChannelId;
@@ -61,7 +60,6 @@ public class FeedService
     public async Task RunBotAsync()
     {
         _client = new DiscordSocketClient();
-        _commandService = new CommandService();
         _client.Log += LogAsync;
 
         _client.Ready += ReadyAsync;
