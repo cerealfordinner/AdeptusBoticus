@@ -99,30 +99,34 @@ public class FeedService
         DateTime latestFantasyArticleDate = storageService.GetLastPostedArticleDate(ArticleType.WarhammerFantasy);
 
         var xmlDoc = await GetFeedAsync(_feedUrl);
-        Article latest40KArticle = GetNewWarhammerArticle(xmlDoc, _40kCategories, ArticleType.Warhammer40K, latest40kArticleDate);
-        Article latestHorusHersyArticle = GetNewWarhammerArticle(xmlDoc, _horusHeresyCategories, ArticleType.WarhammerHorusHeresy, latestHorusHeresyArticleDate);
-        Article latestFantasyArticle = GetNewWarhammerArticle(xmlDoc, _fantasyCategories, ArticleType.WarhammerFantasy, latestFantasyArticleDate);
+        Article new40KArticle = GetNewWarhammerArticle(xmlDoc, _40kCategories, ArticleType.Warhammer40K, latest40kArticleDate);
+        Article newHorusHersyArticle = GetNewWarhammerArticle(xmlDoc, _horusHeresyCategories, ArticleType.WarhammerHorusHeresy, latestHorusHeresyArticleDate);
+        Article newFantasyArticle = GetNewWarhammerArticle(xmlDoc, _fantasyCategories, ArticleType.WarhammerFantasy, latestFantasyArticleDate);
 
-        if (latest40KArticle != null || latestHorusHersyArticle != null || latestFantasyArticle != null)
+        if (new40KArticle != null || newHorusHersyArticle != null || newFantasyArticle != null)
         {
-            if (latest40KArticle != null && latest40KArticle.PublicationDate > latest40kArticleDate)
+            if (new40KArticle != null && new40KArticle.PublicationDate > latest40kArticleDate)
             {
-                await PostLatestArticle(_client, latest40KArticle);
-                storageService.UpdateLastPostedArticleDate(latest40KArticle);
-                Console.WriteLine(latest40KArticle.Title);
+                await PostLatestArticle(_client, new40KArticle);
+                storageService.UpdateLastPostedArticleDate(new40KArticle);
+                Console.WriteLine(new40KArticle.Title);
             }
-            if (latestHorusHersyArticle != null && latestHorusHersyArticle.PublicationDate > latestHorusHeresyArticleDate)
+            if (newHorusHersyArticle != null && newHorusHersyArticle.PublicationDate > latestHorusHeresyArticleDate)
             {
-                await PostLatestArticle(_client, latestHorusHersyArticle);
-                storageService.UpdateLastPostedArticleDate(latestHorusHersyArticle);
-                Console.WriteLine(latestHorusHersyArticle.Title);
+                await PostLatestArticle(_client, newHorusHersyArticle);
+                storageService.UpdateLastPostedArticleDate(newHorusHersyArticle);
+                Console.WriteLine(newHorusHersyArticle.Title);
             }
-            if (latestFantasyArticle != null && latestFantasyArticle.PublicationDate > latestFantasyArticleDate)
+            if (newFantasyArticle != null && newFantasyArticle.PublicationDate > latestFantasyArticleDate)
             {
-                await PostLatestArticle(_client, latestFantasyArticle);
-                storageService.UpdateLastPostedArticleDate(latestFantasyArticle);
-                Console.WriteLine(latestFantasyArticle.Title);
+                await PostLatestArticle(_client, newFantasyArticle);
+                storageService.UpdateLastPostedArticleDate(newFantasyArticle);
+                Console.WriteLine(newFantasyArticle.Title);
             }
+        }
+        else
+        {
+            Console.WriteLine("No new articles found");
         }
 
     }
