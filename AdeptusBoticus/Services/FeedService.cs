@@ -156,7 +156,18 @@ public class FeedService
 
         if (channel != null)
         {
-            await channel.SendMessageAsync(article.Link);
+            var embed = new EmbedBuilder
+            {
+                Title = article.Title,
+                Description = article.Description.StripHtmlTags(),
+                ImageUrl = article.ImageUrl,
+                Url = article.Link
+            };
+
+            // Comment out until link previews return
+            // await channel.SendMessageAsync(article.Link);
+
+            await channel.SendMessageAsync(embed: embed.Build());
         }
     }
 
@@ -186,6 +197,8 @@ public class FeedService
                 {
                     Title = latestArticleElement.Element("title")?.Value,
                     Link = latestArticleElement.Element("link")?.Value,
+                    ImageUrl = latestArticleElement.Element("image")?.Value,
+                    Description = latestArticleElement.Element("description")?.Value,
                     ArticleType = articleType,
                     PublicationDate = articleDate
                 };

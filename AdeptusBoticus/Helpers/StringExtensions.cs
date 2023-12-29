@@ -13,4 +13,9 @@ public static class StringExtensions
         }
         return -1; // Invalid ID
     }
+
+    public static string StripHtmlTags(this string link)
+    {
+        return Regex.Replace(link, "<.*?>", string.Empty);
+    }
 }
