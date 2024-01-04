@@ -122,8 +122,7 @@ public class FeedService
                 break;
         }
 
-        if (article.Title.Contains("pre-order", StringComparison.CurrentCultureIgnoreCase)
-        || article.Description.Contains("pre-order", StringComparison.CurrentCultureIgnoreCase))
+        if (article.Title.Contains("pre-order", StringComparison.CurrentCultureIgnoreCase))
         {
             var orderChannel = client.GetChannel(_ordersChannelId) as ISocketMessageChannel;
             await orderChannel?.SendMessageAsync(embed: new EmbedBuilder
