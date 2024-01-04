@@ -36,3 +36,4 @@ msbuild.wrn
 # Dev appsettings
 appsettings.dev.json
 AdeptusBoticus/Data/*.txt
+AdeptusBoticus/*.tar

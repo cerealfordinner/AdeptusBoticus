@@ -1,6 +1,5 @@
 ﻿using System.Xml.Linq;
 using Discord;
-using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 
@@ -18,44 +17,15 @@ public class FeedService
     private string[] _horusHeresyCategories;
     private ulong _fantasyChannelId;
     private string[] _fantasyCategories;
+    private ulong _warcomChannelId;
+    private ulong _ordersChannelId;
     private string _feedUrl;
     public FeedService(IConfiguration configuration)
     {
         _configuration = configuration;
-        // get all config values
-        _feedUrl = _configuration["FeedUrl"];
-        _discordApiKey = _configuration["DiscordApiKey"];
-
-        var ulong40k = configuration.GetSection("Warhammer40K:channelId").Value;
-        if (ulong.TryParse(ulong40k, out ulong channelId40k))
-        {
-            _40kChannelId = channelId40k;
-        }
-        _40kCategories = configuration.GetSection("Warhammer40K:categories")
-            .GetChildren()
-            .Select(x => x.Value)
-            .ToArray();
-
-        var ulongHH = configuration.GetSection("WarhammerHorusHeresy:channelId").Value;
-        if (ulong.TryParse(ulongHH, out ulong channelIdHH))
-        {
-            _horusHersyChannelId = channelIdHH;
-        }
-        _horusHeresyCategories = configuration.GetSection("WarhammerHorusHeresy:categories")
-            .GetChildren()
-            .Select(x => x.Value)
-            .ToArray();
-
-        var ulongFantasy = configuration.GetSection("WarhammerFantasy:channelId").Value;
-        if (ulong.TryParse(ulongFantasy, out ulong channelIdFantasy))
-        {
-            _fantasyChannelId = channelIdFantasy;
-        }
-        _fantasyCategories = configuration.GetSection("WarhammerFantasy:categories")
-            .GetChildren()
-            .Select(x => x.Value)
-            .ToArray();
+        GetConfigs(_configuration);
     }
+
 
     public async Task RunBotAsync()
     {
@@ -152,23 +122,38 @@ public class FeedService
                 break;
         }
 
-        var channel = client.GetChannel(channelId) as ISocketMessageChannel;
-
-        if (channel != null)
+        if (article.Title.Contains("pre-order", StringComparison.CurrentCultureIgnoreCase)
+        || article.Description.Contains("pre-order", StringComparison.CurrentCultureIgnoreCase))
         {
-            var embed = new EmbedBuilder
+            var orderChannel = client.GetChannel(_ordersChannelId) as ISocketMessageChannel;
+            await orderChannel?.SendMessageAsync(embed: new EmbedBuilder
             {
                 Title = article.Title,
                 Description = article.Description.StripHtmlTags(),
                 ImageUrl = article.ImageUrl,
                 Url = article.Link
-            };
-
-            // Comment out until link previews return
-            // await channel.SendMessageAsync(article.Link);
-
-            await channel.SendMessageAsync(embed: embed.Build());
+            }.Build());
         }
+        else
+        {
+            var gameSystemChannel = client.GetChannel(channelId) as ISocketMessageChannel;
+            await gameSystemChannel?.SendMessageAsync(embed: new EmbedBuilder
+            {
+                Title = article.Title,
+                Description = article.Description.StripHtmlTags(),
+                ImageUrl = article.ImageUrl,
+                Url = article.Link
+            }.Build());
+        }
+        var warcomChannel = client.GetChannel(_warcomChannelId) as ISocketMessageChannel;
+        await warcomChannel?.SendMessageAsync(embed: new EmbedBuilder
+        {
+            Title = article.Title,
+            Description = article.Description.StripHtmlTags(),
+            ImageUrl = article.ImageUrl,
+            Url = article.Link
+        }.Build());
+
     }
 
     public async Task<XDocument> GetFeedAsync(string feedUrl)
@@ -208,5 +193,22 @@ public class FeedService
         return null;
     }
 
+    private void GetConfigs(IConfiguration configuration)
+    {
+        _feedUrl = _configuration["FeedUrl"];
+        _discordApiKey = _configuration["DiscordApiKey"];
+
+        _40kChannelId = ulong.TryParse(configuration["Warhammer40K:channelId"], out ulong channelId40k) ? channelId40k : 0;
+        _40kCategories = configuration.GetSection("Warhammer40K:categories").GetChildren().Select(x => x.Value).ToArray();
+
+        _horusHersyChannelId = ulong.TryParse(configuration["WarhammerHorusHeresy:channelId"], out ulong channelidHorusHeresy) ? channelidHorusHeresy : 0;
+        _horusHeresyCategories = configuration.GetSection("WarhammerHorusHeresy:categories").GetChildren().Select(x => x.Value).ToArray();
+
+        _fantasyChannelId = ulong.TryParse(configuration["WarhammerFantasy:channelId"], out ulong channelIdFantasy) ? channelIdFantasy : 0;
+        _fantasyCategories = configuration.GetSection("WarhammerFantasy:categories").GetChildren().Select(x => x.Value).ToArray();
+
+        _warcomChannelId = ulong.TryParse(configuration["Warcom:channelId"], out ulong channelIdWarcom) ? channelIdWarcom : 0;
+        _ordersChannelId = ulong.TryParse(configuration["Orders:channelId"], out ulong channelIdOrder) ? channelIdOrder : 0;
+    }
 }
 
