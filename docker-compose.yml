@@ -1,0 +1,39 @@
+﻿services:
+  adeptusboticus:
+    image: adeptusboticus
+    build:
+      context: .
+      dockerfile: src/AdeptusBoticus/Dockerfile
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - WH40K_ID=${WH40K_ID}
+      - AOS_ID=${AOS_ID}
+      - HH_ID=${HH_ID}
+      - BB_ID=${BB_ID}
+      - ORDERS_ID=${ORDERS_ID}
+      - LITEDB_CONNECTION_STRING=litedb.db
+    depends_on:
+      - litedb
+    volumes:
+      - litedbdata:/data/db
+    ports:
+      - "80:80"
+    env_file:
+      - .env
+    networks:
+      - botnet
+
+  litedb:
+    image: "litedb:latest"
+    container_name: litedb
+    volumes:
+      - litedbdata:/data/db
+    networks:
+      - botnet
+
+networks:
+  botnet:
+    driver: bridge
+
+volumes: 
+  litedbdata:
