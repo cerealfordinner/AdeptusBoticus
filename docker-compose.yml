@@ -11,29 +11,27 @@
       - HH_ID=${HH_ID}
       - BB_ID=${BB_ID}
       - ORDERS_ID=${ORDERS_ID}
-      - LITEDB_CONNECTION_STRING=litedb.db
-    depends_on:
-      - litedb
-    volumes:
-      - litedbdata:/data/db
     ports:
       - "80:80"
     env_file:
       - .env
     networks:
       - botnet
+    depends_on:
+      - mongodb
 
-  litedb:
-    image: "litedb:latest"
-    container_name: litedb
-    volumes:
-      - litedbdata:/data/db
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
     networks:
       - botnet
+    volumes:
+      - mongo_data:/data/db
 
 networks:
   botnet:
     driver: bridge
-
-volumes: 
-  litedbdata:
+   
+volumes:
+  mongo_data:
