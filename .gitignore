@@ -33,7 +33,5 @@ msbuild.wrn
 # Visual Studio 2015
 .vs/
 
-# Dev appsettings
-appsettings.dev.json
-AdeptusBoticus/Data/*.txt
-AdeptusBoticus/*.tar
+# Rider
+.idea
