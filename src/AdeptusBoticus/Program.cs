@@ -3,7 +3,6 @@ using System.Xml;
 using AdeptusBoticus.Data;
 using AdeptusBoticus.Extensions;
 using AdeptusBoticus.Models;
-using DotNetEnv;
 using DSharpPlus;
 using DSharpPlus.Entities;
 using MongoDB.Driver;
@@ -13,17 +12,15 @@ namespace AdeptusBoticus;
 
 public sealed class Program
 {
-    private static DiscordClient _client;
-    private static List<ChannelConfig> _channelConfigs;
-    private static Timer _rssCheckTimer;
+    private static DiscordClient? _client;
+    private static List<ChannelConfig>? _channelConfigs;
+    private static Timer? _rssCheckTimer;
 
-    private static DataService _dataService;
+    private static DataService? _dataService;
     private static readonly string _feedUrl = "https://www.warhammer-community.com/feed/";
 
     private static async Task Main(string[] args)
     {
-        // Env.TraversePath().Load();
-
         var botToken = Environment.GetEnvironmentVariable("DISCORD_TOKEN");
 
         _dataService = new DataService();
@@ -87,7 +84,7 @@ public sealed class Program
         ];
     }
 
-    private static async Task InitializeRssFeedChecker()
+    private static void InitializeRssFeedChecker()
     {
         _rssCheckTimer = new Timer(300000);
         _rssCheckTimer.Elapsed += async (sender, e) => await CheckRssFeedAsync();
