@@ -7,7 +7,6 @@ using AdeptusBoticus.Services;
 using DSharpPlus.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MongoDB.Driver;
 using Serilog;
 using Serilog.Extensions.Logging;
 
@@ -63,7 +62,7 @@ public sealed class Program
 
         services.AddSingleton<IDataService>(sp =>
             new DataService(
-                config.MongoDbUri,
+                config.DataFilePath,
                 sp.GetRequiredService<ILogger<DataService>>()));
 
         services.AddSingleton<IDiscordBot>(sp =>
@@ -107,7 +106,7 @@ public sealed class Program
             DiscordToken = GetRequiredEnvironmentVariable("DISCORD_TOKEN"),
             RssCheckIntervalMs = int.TryParse(Environment.GetEnvironmentVariable("RSS_CHECK_INTERVAL_MS"), out var interval) ? interval : 300000,
             FeedUrl = Environment.GetEnvironmentVariable("FEED_URL") ?? "https://www.warhammer-community.com/feed/",
-            MongoDbUri = Environment.GetEnvironmentVariable("MONGODB_URI") ?? "mongodb://mongodb:27017",
+            DataFilePath = Environment.GetEnvironmentVariable("DATA_FILE_PATH") ?? "./data/trackers.json",
             Channels = LoadChannelConfigs()
         };
     }
@@ -181,7 +180,6 @@ public sealed class Program
 
             var dataService = _serviceProvider.GetRequiredService<IDataService>();
             var discordBot = _serviceProvider.GetRequiredService<IDiscordBot>();
-            var categoryTrackers = dataService.GetCategoryTrackers();
 
             foreach (var channelConfig in config.Channels)
             {
@@ -194,8 +192,7 @@ public sealed class Program
                 if (item != null)
                 {
                     var itemDateTime = item.PublishDate.UtcDateTime;
-                    var filter = MongoDB.Driver.Builders<CategoryTracker>.Filter.Eq(ct => ct.ChannelName, channelConfig.ChannelName.ToString());
-                    var categoryTracker = categoryTrackers.Find(filter).FirstOrDefault();
+                    var categoryTracker = dataService.GetTracker(channelConfig.ChannelName);
 
                     if (categoryTracker == null || itemDateTime > categoryTracker.LastPostedItemTimeStamp)
                     {
