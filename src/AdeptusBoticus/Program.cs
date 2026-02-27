@@ -109,7 +109,7 @@ public sealed class Program
         {
             DiscordToken = GetRequiredEnvironmentVariable("DISCORD_TOKEN"),
             RssCheckIntervalMs = int.TryParse(Environment.GetEnvironmentVariable("RSS_CHECK_INTERVAL_MS"), out var interval) ? interval : 300000,
-            FeedUrl = Environment.GetEnvironmentVariable("FEED_URL") ?? "https://www.warhammer-community.com/feed/",
+            FeedUrl = Environment.GetEnvironmentVariable("FEED_URL") ?? "https://www.warhammer-community.com/api/search/news/",
             DataFilePath = Environment.GetEnvironmentVariable("DATA_FILE_PATH") ?? "./data/trackers.json",
             Channels = LoadChannelConfigs()
         };

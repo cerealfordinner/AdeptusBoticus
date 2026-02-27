@@ -14,8 +14,21 @@ public class WarComArticleReader : IWarComArticleReader
 
     public async Task<WarComResponse?> ReadArticlesAsync(string url)
     {
-        // The API requires a POST request, even if there's no body
-        var response = await _httpClient.PostAsync(url, null);
+        var payload = new
+        {
+            sortBy = "date_desc",
+            category = "",
+            collections = new[] { "articles" },
+            game_systems = Array.Empty<string>(),
+            index = "news",
+            locale = "en-gb",
+            page = 0,
+            perPage = 16,
+            topics = Array.Empty<string>()
+        };
+
+        var jsonContent = System.Text.Json.JsonSerializer.Serialize(payload);
+        var response = await _httpClient.PostAsync(url, new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json"));
         response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<WarComResponse>();
