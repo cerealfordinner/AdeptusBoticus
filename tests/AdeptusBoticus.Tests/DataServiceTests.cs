@@ -1,83 +1,17 @@
-using AdeptusBoticus.Extensions;
-using AdeptusBoticus.Models;
 using AdeptusBoticus.Data;
+using AdeptusBoticus.Models;
 using Microsoft.Extensions.Logging;
-using Moq;
+using NSubstitute;
 
 namespace AdeptusBoticus.Tests;
 
-public class StringExtensionsTests
-{
-    [Theory]
-    [InlineData("<p>Hello World</p>", "Hello World")]
-    [InlineData("<h1>Title</h1>", "Title")]
-    [InlineData("No tags here", "No tags here")]
-    [InlineData("", "")]
-    [InlineData(null, "")]
-    [InlineData("<div><p>Nested</p></div>", "Nested")]
-    [InlineData("Text with &lt;escaped&gt; tags", "Text with escaped tags")]
-    public void StripHtmlTags_RemovesHtmlTags(string? input, string expected)
-    {
-        var result = input.StripHtmlTags();
-        
-        Assert.Equal(expected, result);
-    }
-}
-
-public class ChannelConfigTests
-{
-    [Fact]
-    public void ChannelConfig_SetsPropertiesCorrectly()
-    {
-        var config = new ChannelConfig
-        {
-            ChannelName = ChannelNameEnum.WH40K,
-            ChannelId = 123456789UL,
-            Categories = ["Warhammer 40000", "40k"]
-        };
-
-        Assert.Equal(ChannelNameEnum.WH40K, config.ChannelName);
-        Assert.Equal(123456789UL, config.ChannelId);
-        Assert.Equal(2, config.Categories.Count);
-        Assert.Contains("Warhammer 40000", config.Categories);
-    }
-
-    [Fact]
-    public void ChannelConfig_RequiresCategories()
-    {
-        var config = new ChannelConfig
-        {
-            ChannelName = ChannelNameEnum.AOS,
-            ChannelId = 987654321UL,
-            Categories = ["AoS"]
-        };
-
-        Assert.NotNull(config.Categories);
-    }
-}
-
-public class CategoryTrackerTests
-{
-    [Fact]
-    public void CategoryTracker_SetsPropertiesCorrectly()
-    {
-        var tracker = new CategoryTracker
-        {
-            ChannelName = "WH40K",
-            LastPostedItemTimeStamp = DateTime.UtcNow
-        };
-
-        Assert.Equal("WH40K", tracker.ChannelName);
-    }
-}
-
 public class DataServiceTests
 {
-    private readonly Mock<ILogger<DataService>> _mockLogger;
+    private readonly ILogger<DataService> _mockLogger;
 
     public DataServiceTests()
     {
-        _mockLogger = new Mock<ILogger<DataService>>();
+        _mockLogger = Substitute.For<ILogger<DataService>>();
     }
 
     [Fact]
@@ -87,7 +21,7 @@ public class DataServiceTests
 
         try
         {
-            var dataService = new DataService(tempFile, _mockLogger.Object);
+            var dataService = new DataService(tempFile, _mockLogger);
 
             Assert.NotNull(dataService);
         }
@@ -105,7 +39,7 @@ public class DataServiceTests
 
         try
         {
-            var dataService = new DataService(tempFile, _mockLogger.Object);
+            var dataService = new DataService(tempFile, _mockLogger);
             dataService.InitializeCategoryTimestamps();
 
             foreach (ChannelNameEnum channel in Enum.GetValues(typeof(ChannelNameEnum)))
@@ -129,7 +63,7 @@ public class DataServiceTests
 
         try
         {
-            var dataService = new DataService(tempFile, _mockLogger.Object);
+            var dataService = new DataService(tempFile, _mockLogger);
             dataService.InitializeCategoryTimestamps();
 
             var newTime = new DateTime(2025, 6, 15, 12, 0, 0, DateTimeKind.Utc);
@@ -156,12 +90,12 @@ public class DataServiceTests
             var newTime = new DateTime(2025, 6, 15, 12, 0, 0, DateTimeKind.Utc);
 
             // Write data with one instance
-            var dataService1 = new DataService(tempFile, _mockLogger.Object);
+            var dataService1 = new DataService(tempFile, _mockLogger);
             dataService1.InitializeCategoryTimestamps();
             dataService1.UpdateLastPostedItemTimestamp(ChannelNameEnum.AOS, newTime);
 
             // Read it back with a new instance
-            var dataService2 = new DataService(tempFile, _mockLogger.Object);
+            var dataService2 = new DataService(tempFile, _mockLogger);
             var tracker = dataService2.GetTracker(ChannelNameEnum.AOS);
 
             Assert.NotNull(tracker);

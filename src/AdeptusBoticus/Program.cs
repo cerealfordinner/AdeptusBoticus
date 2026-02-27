@@ -21,6 +21,7 @@ public sealed class Program
     public static async Task Main(string[] args)
     {
         Console.CancelKeyPress += OnShutdown;
+        DotNetEnv.Env.Load();
 
         try
         {
@@ -69,6 +70,9 @@ public sealed class Program
             new DiscordBot(
                 config.DiscordToken,
                 sp.GetRequiredService<ILogger<DiscordBot>>()));
+
+        services.AddHttpClient<IWarComArticleReader, WarComArticleReader>();
+        services.AddSingleton<IWarComArticleService, WarComArticleService>();
     }
 
     private static void OnShutdown(object? sender, ConsoleCancelEventArgs e)
@@ -119,21 +123,21 @@ public sealed class Program
             {
                 ChannelName = ChannelNameEnum.WH40K,
                 ChannelId = GetChannelIdFromEnv("WH40K_ID"),
-                Categories = ["Warhammer 40000", "40k", "Kill Team"]
+                Categories = ["Warhammer 40000", "Warhammer 40,000", "40k", "Kill Team"]
             },
 
             new ChannelConfig
             {
                 ChannelName = ChannelNameEnum.AOS,
                 ChannelId = GetChannelIdFromEnv("AOS_ID"),
-                Categories = ["Warhammer Age of Sigmar", "Old World", "Old World Almanack", "Arcane Journal", "AoS"]
+                Categories = ["Warhammer Age of Sigmar", "Old World", "Warhammer: The Old World", "Old World Almanack", "Arcane Journal", "AoS"]
             },
 
             new ChannelConfig
             {
                 ChannelName = ChannelNameEnum.HH,
                 ChannelId = GetChannelIdFromEnv("HH_ID"),
-                Categories = ["The Horus Heresy", "The Horus Heresy News"]
+                Categories = ["The Horus Heresy", "Warhammer: The Horus Heresy", "The Horus Heresy News"]
             },
 
             new ChannelConfig
@@ -153,77 +157,21 @@ public sealed class Program
         _rssCheckTimer.Enabled = true;
 
         Log.Information("RSS checker initialized with interval {Interval}ms", config.RssCheckIntervalMs);
-        _ = Task.Run(() => CheckRssFeedAsync(config));
+        
+        var rssService = _serviceProvider.GetRequiredService<IWarComArticleService>();
+        _ = Task.Run(() => rssService.CheckArticlesAsync());
     }
 
     private static async void OnTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
     {
         try
         {
-            var config = _serviceProvider.GetRequiredService<BotConfiguration>();
-            await CheckRssFeedAsync(config);
+            var rssService = _serviceProvider.GetRequiredService<IWarComArticleService>();
+            await rssService.CheckArticlesAsync();
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error checking RSS feed");
-        }
-    }
-
-    private static async Task CheckRssFeedAsync(BotConfiguration config)
-    {
-        Log.Debug("Checking Warhammer Community RSS feed...");
-
-        try
-        {
-            using var reader = XmlReader.Create(config.FeedUrl);
-            var feed = SyndicationFeed.Load(reader);
-
-            var dataService = _serviceProvider.GetRequiredService<IDataService>();
-            var discordBot = _serviceProvider.GetRequiredService<IDiscordBot>();
-
-            foreach (var channelConfig in config.Channels)
-            {
-                var item = feed.Items
-                    .Where(item => channelConfig.Categories.Any(category => item.Categories
-                        .Any(feedCategory => feedCategory.Name
-                            .Equals(category, StringComparison.CurrentCultureIgnoreCase))))
-                    .MaxBy(item => item.PublishDate);
-
-                if (item != null)
-                {
-                    var itemDateTime = item.PublishDate.UtcDateTime;
-                    var categoryTracker = dataService.GetTracker(channelConfig.ChannelName);
-
-                    if (categoryTracker == null || itemDateTime > categoryTracker.LastPostedItemTimeStamp)
-                    {
-                        var channel = await discordBot.GetChannelAsync(channelConfig.ChannelId);
-
-                        var imageThumbnailExtension = item.ElementExtensions
-                            .FirstOrDefault(ext => ext.OuterName == "image_medium");
-
-                        var thumbnailUrl = imageThumbnailExtension?.GetObject<string>();
-
-                        var embed = new DiscordEmbedBuilder
-                        {
-                            Title = item.Title.Text,
-                            Url = item.Links?.FirstOrDefault()?.Uri.ToString(),
-                            Description = item.Summary.Text.StripHtmlTags(),
-                            ImageUrl = thumbnailUrl
-                        };
-
-                        await channel.SendMessageAsync(embed);
-                        Log.Information("Posted new item to channel {ChannelName}: {ItemTitle}", channel.Name, item.Title.Text);
-
-                        dataService.UpdateLastPostedItemTimestamp(channelConfig.ChannelName, item.PublishDate.UtcDateTime);
-                    }
-                }
-            }
-            Log.Debug("RSS check complete.");
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed to check RSS feed");
-            throw;
         }
     }
 }
