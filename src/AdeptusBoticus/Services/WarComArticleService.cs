@@ -55,11 +55,14 @@ public class WarComArticleService : IWarComArticleService
 
                 if (item != null)
                 {
+                    _logger.LogInformation("Found matching article for {ChannelName}: {ItemTitle} (Date: {ItemDate})", channelConfig.ChannelName, item.Title, item.Date);
+
                     var itemDateTime = item.GetParsedDate().ToUniversalTime();
                     var categoryTracker = _dataService.GetTracker(channelConfig.ChannelName);
 
                     if (categoryTracker == null || itemDateTime > categoryTracker.LastPostedItemTimeStamp)
                     {
+                        _logger.LogInformation("Article is newer than last posted - generating embed for {ChannelName}", channelConfig.ChannelName);
                         var channel = await _discordBot.GetChannelAsync(channelConfig.ChannelId);
 
                         string? thumbnailUrl = null;
@@ -80,10 +83,15 @@ public class WarComArticleService : IWarComArticleService
                             ImageUrl = thumbnailUrl
                         };
 
+                        _logger.LogInformation("Sending embed to Discord channel {ChannelName}", channel.Name);
                         await _discordBot.SendMessageAsync(channelConfig.ChannelId, embed);
-                        _logger.LogInformation("Posted new item to channel {ChannelName}: {ItemTitle}", channel.Name, item.Title);
+                        _logger.LogInformation("Successfully posted new item to channel {ChannelName}: {ItemTitle}", channel.Name, item.Title);
 
                         _dataService.UpdateLastPostedItemTimestamp(channelConfig.ChannelName, itemDateTime);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Article timestamp is not newer than last posted for {ChannelName}, skipping", channelConfig.ChannelName);
                     }
                 }
             }
