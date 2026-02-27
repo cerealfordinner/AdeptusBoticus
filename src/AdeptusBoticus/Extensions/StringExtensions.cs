@@ -4,8 +4,9 @@ namespace AdeptusBoticus.Extensions;
 
 public static class StringExtensions
 {
-    public static string StripHtmlTags(this string? link)
+    public static string StripHtmlTags(this string? input)
     {
-        return Regex.Replace(link, "<.*?>", string.Empty);
+        if (string.IsNullOrEmpty(input)) return string.Empty;
+        return Regex.Replace(input, "<.*?>", string.Empty);
     }
 }

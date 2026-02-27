@@ -7,9 +7,9 @@ public class CategoryTracker
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; }
+    public required string Id { get; set; }
 
-    [BsonElement("channel_name")] public string ChannelName { get; set; }
+    [BsonElement("channel_name")] public required string ChannelName { get; set; }
 
     [BsonElement("last_posted_item_timestamp")]
     public DateTime LastPostedItemTimeStamp { get; set; }
