@@ -34,13 +34,13 @@ dotnet restore
 
 ### 3. Create Environment Variables
 
-Copy the sample environment file and configure it:
+Copy the sample environment file to the project directory and configure it:
 
 ```bash
-cp sample.env .env
+cp sample.env src/AdeptusBoticus/.env
 ```
 
-Edit `.env` with your values:
+Edit `src/AdeptusBoticus/.env` with your values:
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
@@ -59,13 +59,13 @@ Edit `.env` with your values:
 ### Development
 
 ```bash
-dotnet run
+dotnet run --project src/AdeptusBoticus
 ```
 
 ### Build for Production
 
 ```bash
-dotnet publish -c Release -r linux-x64 --self-contained -o ./publish
+dotnet publish src/AdeptusBoticus -c Release -r linux-x64 --self-contained -o ./publish
 ```
 
 ## Hosting on Linux
@@ -73,7 +73,7 @@ dotnet publish -c Release -r linux-x64 --self-contained -o ./publish
 ### 1. Publish the Application
 
 ```bash
-dotnet publish -c Release -r linux-x64 --self-contained -o ./publish
+dotnet publish src/AdeptusBoticus -c Release -r linux-x64 --self-contained -o ./publish
 ```
 
 ### 2. Deploy to Server
