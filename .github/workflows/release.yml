@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0
+
+permissions:
+  contents: write  # Needed to create releases and upload assets
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+        include-prerelease: true
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Publish for linux-x64
+      run: |
+        dotnet publish \
+          --configuration Release \
+          --runtime linux-x64 \
+          --self-contained true \
+          --output ./publish/linux-x64 \
+          /p:PublishSingleFile=true
+
+    - name: Rename binary
+      working-directory: ./publish/linux-x64
+      run: |
+        mv AdeptusBoticus adeptusboticus-linux-x64
+
+    - name: Create checksum
+      working-directory: ./publish/linux-x64
+      run: |
+        sha256sum adeptusboticus-linux-x64 > adeptusboticus-linux-x64.sha256
+        cat adeptusboticus-linux-x64.sha256
+
+    - name: Get version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.VERSION }}
+        name: Release ${{ steps.version.outputs.VERSION }}
+        generate_release_notes: true
+        files: |
+          ./publish/linux-x64/adeptusboticus-linux-x64
+          ./publish/linux-x64/adeptusboticus-linux-x64.sha256
