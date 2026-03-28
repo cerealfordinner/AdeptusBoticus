@@ -35,3 +35,11 @@ msbuild.wrn
 
 # Rider
 .idea
+
+# Publish output
+publish/
+
+# Environment files (contain secrets)
+.env
+.env.local
+.env.*.local
