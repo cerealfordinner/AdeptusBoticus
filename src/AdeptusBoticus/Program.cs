@@ -1,10 +1,6 @@
-using System.ServiceModel.Syndication;
-using System.Xml;
 using AdeptusBoticus.Data;
-using AdeptusBoticus.Extensions;
 using AdeptusBoticus.Models;
 using AdeptusBoticus.Services;
-using DSharpPlus.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -21,7 +17,7 @@ public sealed class Program
     public static async Task Main(string[] args)
     {
         Console.CancelKeyPress += OnShutdown;
-        DotNetEnv.Env.Load();
+        DotNetEnv.Env.Load(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env"));
 
         try
         {
@@ -37,6 +33,10 @@ public sealed class Program
 
             var config = _serviceProvider.GetRequiredService<BotConfiguration>();
             InitializeRssFeedChecker(config);
+
+            // Perform initial check immediately
+            var rssService = _serviceProvider.GetRequiredService<IWarComArticleService>();
+            await rssService.CheckArticlesAsync();
 
             Log.Information("Bot started successfully");
             _shutdownEvent.WaitOne();
@@ -157,9 +157,6 @@ public sealed class Program
         _rssCheckTimer.Enabled = true;
 
         Log.Information("RSS checker initialized with interval {Interval}ms", config.RssCheckIntervalMs);
-        
-        var rssService = _serviceProvider.GetRequiredService<IWarComArticleService>();
-        _ = Task.Run(() => rssService.CheckArticlesAsync());
     }
 
     private static async void OnTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
