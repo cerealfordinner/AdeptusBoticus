@@ -8,7 +8,7 @@ public sealed class DiscordBot : IDiscordBot
 {
     private readonly DiscordClient _client;
     private readonly ILogger<DiscordBot> _logger;
-    
+
     public DiscordBot(string botToken, ILogger<DiscordBot> logger)
     {
         _logger = logger;
@@ -18,7 +18,7 @@ public sealed class DiscordBot : IDiscordBot
             TokenType = TokenType.Bot,
             Intents = DiscordIntents.AllUnprivileged
         };
-        
+
         _client = new DiscordClient(config);
     }
 
@@ -34,11 +34,6 @@ public sealed class DiscordBot : IDiscordBot
             _logger.LogError(e, "Failed to connect to Discord");
             throw;
         }
-    }
-
-    public async Task<DiscordChannel> GetChannelAsync(ulong channelId)
-    {
-        return await _client.GetChannelAsync(channelId);
     }
 
     public async Task SendMessageAsync(ulong channelId, DiscordEmbed embed)

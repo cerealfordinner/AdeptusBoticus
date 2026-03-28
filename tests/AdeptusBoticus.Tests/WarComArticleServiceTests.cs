@@ -47,20 +47,17 @@ public class WarComArticleServiceTests
         // Arrange
         var json = await File.ReadAllTextAsync("sample-response.json");
         var response = JsonSerializer.Deserialize<WarComResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        
+
         _articleReader.ReadArticlesAsync(_config.FeedUrl).Returns(response);
 
         // Tracker is null (or older than the articles)
         _dataService.GetTracker(ChannelNameEnum.WH40K).Returns((CategoryTracker?)null);
 
-        // Mock Discord Channel
-        _discordBot.GetChannelAsync(Arg.Any<ulong>()).Returns(Substitute.For<DiscordChannel>());
-
         // Act
         await _service.CheckArticlesAsync();
 
         // Assert
-        // The newest 40k article in the sample is "Aeldari Corsair showcase: The Ballad of the Sky Serpents part two" or "First look at the datasheet for the new Tyranid Prime with Lash Whip"
+        // The newest 40k article in the sample-response is "Aeldari Corsair showcase: The Ballad of the Sky Serpents part two" or "First look at the datasheet for the new Tyranid Prime with Lash Whip"
         // Since there are multiple "27 Feb 26" articles, we just check we sent at least one message.
         await _discordBot.Received(1).SendMessageAsync(
             Arg.Is<ulong>(12345),
@@ -76,7 +73,7 @@ public class WarComArticleServiceTests
         // Arrange
         var json = await File.ReadAllTextAsync("sample-response.json");
         var response = JsonSerializer.Deserialize<WarComResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        
+
         _articleReader.ReadArticlesAsync(_config.FeedUrl).Returns(response);
 
         // Tracker has a date from the distant future

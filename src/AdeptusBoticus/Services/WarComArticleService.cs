@@ -47,11 +47,14 @@ public class WarComArticleService : IWarComArticleService
 
             foreach (var channelConfig in _config.Channels)
             {
-                var item = response.News
+                var matchingItems = response.News
                     .Where(item => channelConfig.Categories.Any(category => item.Topics
                         .Any(feedTopic => feedTopic.Title
-                            .Equals(category, StringComparison.CurrentCultureIgnoreCase))))
-                    .MaxBy(item => item.GetParsedDate());
+                            .Equals(category, StringComparison.OrdinalIgnoreCase))));
+
+                var item = matchingItems.Any()
+                    ? matchingItems.MaxBy(item => item.GetParsedDate())
+                    : null;
 
                 if (item != null)
                 {
@@ -63,7 +66,6 @@ public class WarComArticleService : IWarComArticleService
                     if (categoryTracker == null || itemDateTime > categoryTracker.LastPostedItemTimeStamp)
                     {
                         _logger.LogInformation("Article is newer than last posted - generating embed for {ChannelName}", channelConfig.ChannelName);
-                        var channel = await _discordBot.GetChannelAsync(channelConfig.ChannelId);
 
                         string? thumbnailUrl = null;
                         if (!string.IsNullOrEmpty(item.Image?.Path))
@@ -83,9 +85,9 @@ public class WarComArticleService : IWarComArticleService
                             ImageUrl = thumbnailUrl
                         };
 
-                        _logger.LogInformation("Sending embed to Discord channel {ChannelName}", channel.Name);
+                        _logger.LogInformation("Sending embed to Discord channel {ChannelName}", channelConfig.ChannelName);
                         await _discordBot.SendMessageAsync(channelConfig.ChannelId, embed);
-                        _logger.LogInformation("Successfully posted new item to channel {ChannelName}: {ItemTitle}", channel.Name, item.Title);
+                        _logger.LogInformation("Successfully posted new item to channel {ChannelName}: {ItemTitle}", channelConfig.ChannelName, item.Title);
 
                         _dataService.UpdateLastPostedItemTimestamp(channelConfig.ChannelName, itemDateTime);
                     }

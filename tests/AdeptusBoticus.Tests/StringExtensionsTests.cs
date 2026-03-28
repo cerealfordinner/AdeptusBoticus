@@ -11,11 +11,11 @@ public class StringExtensionsTests
     [InlineData("", "")]
     [InlineData(null, "")]
     [InlineData("<div><p>Nested</p></div>", "Nested")]
-    [InlineData("Text with &lt;escaped&gt; tags", "Text with escaped tags")]
+    [InlineData("Text with &lt;em&gt;escaped&lt;/em&gt; tags", "Text with escaped tags")]
     public void StripHtmlTags_RemovesHtmlTags(string? input, string expected)
     {
         var result = input.StripHtmlTags();
-        
+
         Assert.Equal(expected, result);
     }
 }
