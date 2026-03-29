@@ -161,26 +161,36 @@ public sealed class Program
 
     private static void InitializeRssFeedChecker(BotConfiguration config)
     {
+        Log.Information("Initializing RSS checker with interval {Interval}ms", config.RssCheckIntervalMs);
         _rssCheckTimer = new System.Timers.Timer(config.RssCheckIntervalMs);
         _rssCheckTimer.Elapsed += OnTimerElapsed;
         _rssCheckTimer.AutoReset = true;
         _rssCheckTimer.Enabled = true;
 
-        Log.Information("RSS checker initialized with interval {Interval}ms", config.RssCheckIntervalMs);
+        Log.Information("RSS timer created. Enabled: {Enabled}, Interval: {Interval}ms, AutoReset: {AutoReset}",
+            _rssCheckTimer.Enabled, _rssCheckTimer.Interval, _rssCheckTimer.AutoReset);
     }
 
     private static async void OnTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
     {
-        Log.Information("RSS polling cycle started");
         try
         {
+            Log.Information("RSS polling cycle started (Timer fired at {Time})", DateTime.UtcNow);
+
             var rssService = _serviceProvider.GetRequiredService<IWarComArticleService>();
             await rssService.CheckArticlesAsync();
-            Log.Information("RSS polling cycle completed");
+
+            Log.Information("RSS polling cycle completed successfully");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error during RSS polling cycle");
+            Log.Error(ex, "RSS polling cycle failed - timer may stop if exception escapes");
+            // Re-throw to let the timer know something went wrong?
+            // Actually, don't re-throw - we want to keep the timer alive
+        }
+        catch
+        {
+            Log.Error("Unknown error in timer elapsed event");
         }
     }
 }
