@@ -161,14 +161,16 @@ public sealed class Program
 
     private static async void OnTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
     {
+        Log.Information("RSS polling cycle started");
         try
         {
             var rssService = _serviceProvider.GetRequiredService<IWarComArticleService>();
             await rssService.CheckArticlesAsync();
+            Log.Information("RSS polling cycle completed");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error checking RSS feed");
+            Log.Error(ex, "Error during RSS polling cycle");
         }
     }
 }
