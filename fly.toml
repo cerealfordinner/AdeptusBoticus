@@ -1,7 +1,7 @@
 app = "adeptusboticus"
 
 [env]
-  RSS_CHECK_INTERVAL_MS = "300000"
+  POLLING_INTERVAL_MS = "300000"
   DATA_FILE_PATH = "/data/trackers.json"
 
 [[mounts]]

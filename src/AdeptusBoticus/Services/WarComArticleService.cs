@@ -34,7 +34,7 @@ public class WarComArticleService : IWarComArticleService
     public async Task CheckArticlesAsync()
     {
         var startTime = DateTime.UtcNow;
-        _logger.LogInformation("Starting RSS polling cycle at {StartTime}", startTime);
+        _logger.LogInformation("Starting article polling cycle at {StartTime}", startTime);
 
         try
         {
@@ -124,13 +124,13 @@ public class WarComArticleService : IWarComArticleService
             }
 
             var duration = DateTime.UtcNow - startTime;
-            _logger.LogInformation("RSS polling cycle completed. Checked {ChannelCount} channels, made {PostsMade} posts. Duration: {Duration}ms",
+            _logger.LogInformation("Article polling cycle completed. Checked {ChannelCount} channels, made {PostsMade} posts. Duration: {Duration}ms",
                 channelsChecked, postsMade, duration.TotalMilliseconds);
         }
         catch (Exception ex)
         {
             var duration = DateTime.UtcNow - startTime;
-            _logger.LogError(ex, "RSS polling cycle failed after {Duration}ms", duration.TotalMilliseconds);
+            _logger.LogError(ex, "Article polling cycle failed after {Duration}ms", duration.TotalMilliseconds);
             throw;
         }
     }

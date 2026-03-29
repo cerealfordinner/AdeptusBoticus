@@ -11,7 +11,7 @@ namespace AdeptusBoticus;
 public sealed class Program
 {
     private static IServiceProvider _serviceProvider = null!;
-    private static System.Timers.Timer? _rssCheckTimer;
+    private static System.Timers.Timer? _pollingTimer;
     private static readonly ManualResetEvent _shutdownEvent = new(false);
 
     public static async Task Main(string[] args)
@@ -42,7 +42,7 @@ public sealed class Program
             await discordBot.ConnectAsync();
 
             var config = _serviceProvider.GetRequiredService<BotConfiguration>();
-            InitializeRssFeedChecker(config);
+            InitializePolling(config);
 
             // Perform initial check immediately
             var rssService = _serviceProvider.GetRequiredService<IWarComArticleService>();
@@ -88,8 +88,8 @@ public sealed class Program
     private static void OnShutdown(object? sender, ConsoleCancelEventArgs e)
     {
         Log.Information("Shutting down...");
-        _rssCheckTimer?.Stop();
-        _rssCheckTimer?.Dispose();
+        _pollingTimer?.Stop();
+        _pollingTimer?.Dispose();
         _shutdownEvent.Set();
     }
 
@@ -118,7 +118,7 @@ public sealed class Program
         return new BotConfiguration
         {
             DiscordToken = GetRequiredEnvironmentVariable("DISCORD_TOKEN"),
-            RssCheckIntervalMs = int.TryParse(Environment.GetEnvironmentVariable("RSS_CHECK_INTERVAL_MS"), out var interval) ? interval : 300000,
+            PollingIntervalMs = int.TryParse(Environment.GetEnvironmentVariable("POLLING_INTERVAL_MS"), out var interval) ? interval : 300000,
             FeedUrl = Environment.GetEnvironmentVariable("FEED_URL") ?? "https://www.warhammer-community.com/api/search/news/",
             DataFilePath = Environment.GetEnvironmentVariable("DATA_FILE_PATH") ?? "./data/trackers.json",
             Channels = LoadChannelConfigs()
@@ -159,32 +159,32 @@ public sealed class Program
         ];
     }
 
-    private static void InitializeRssFeedChecker(BotConfiguration config)
+    private static void InitializePolling(BotConfiguration config)
     {
-        Log.Information("Initializing RSS checker with interval {Interval}ms", config.RssCheckIntervalMs);
-        _rssCheckTimer = new System.Timers.Timer(config.RssCheckIntervalMs);
-        _rssCheckTimer.Elapsed += OnTimerElapsed;
-        _rssCheckTimer.AutoReset = true;
-        _rssCheckTimer.Enabled = true;
+        Log.Information("Initializing article polling with interval {Interval}ms", config.PollingIntervalMs);
+        _pollingTimer = new System.Timers.Timer(config.PollingIntervalMs);
+        _pollingTimer.Elapsed += OnTimerElapsed;
+        _pollingTimer.AutoReset = true;
+        _pollingTimer.Enabled = true;
 
-        Log.Information("RSS timer created. Enabled: {Enabled}, Interval: {Interval}ms, AutoReset: {AutoReset}",
-            _rssCheckTimer.Enabled, _rssCheckTimer.Interval, _rssCheckTimer.AutoReset);
+        Log.Information("Polling timer created. Enabled: {Enabled}, Interval: {Interval}ms, AutoReset: {AutoReset}",
+            _pollingTimer.Enabled, _pollingTimer.Interval, _pollingTimer.AutoReset);
     }
 
     private static async void OnTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
     {
         try
         {
-            Log.Information("RSS polling cycle started (Timer fired at {Time})", DateTime.UtcNow);
+            Log.Information("Article polling cycle started (Timer fired at {Time})", DateTime.UtcNow);
 
             var rssService = _serviceProvider.GetRequiredService<IWarComArticleService>();
             await rssService.CheckArticlesAsync();
 
-            Log.Information("RSS polling cycle completed successfully");
+            Log.Information("Article polling cycle completed successfully");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "RSS polling cycle failed - timer may stop if exception escapes");
+            Log.Error(ex, "Article polling cycle failed - timer may stop if exception escapes");
             // Re-throw to let the timer know something went wrong?
             // Actually, don't re-throw - we want to keep the timer alive
         }
