@@ -37,6 +37,9 @@ RUN chmod +x AdeptusBoticus
 # Create data directory for persistent volume
 RUN mkdir -p /data && chmod 755 /data
 
+# Create logs directory and set permissions for non-root user
+RUN mkdir -p /app/logs && chown 1000:1000 /app/logs
+
 # Run as non-root for security
 USER 1000
 
