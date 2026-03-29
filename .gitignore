@@ -43,3 +43,6 @@ publish/
 .env
 .env.local
 .env.*.local
+
+# Fly.io
+.fly/

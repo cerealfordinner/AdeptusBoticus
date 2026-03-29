@@ -1,0 +1,18 @@
+app = "adeptusboticus"
+
+[env]
+  RSS_CHECK_INTERVAL_MS = "300000"
+  DATA_FILE_PATH = "/data/trackers.json"
+
+[processes]
+  app = "./adeptusboticus-linux-x64"
+
+[[mounts]]
+  source = "trackers_data"
+  destination = "/data"
+
+[http]
+  disabled = true
+
+[experimental]
+  allowed_public_ports = []

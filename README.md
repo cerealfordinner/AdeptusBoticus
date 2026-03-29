@@ -88,6 +88,70 @@ sudo systemctl start adeptusboticus
 sudo systemctl status adeptusboticus
 ```
 
+## Deploying to Fly.io
+
+[Fly.io](https://fly.io) is an excellent platform for running this bot with free tier and persistent storage.
+
+### Prerequisites
+
+- [Fly.io CLI](https://fly.io/docs/hands-on/install-fly-cli/) installed
+- A Fly.io account (sign up with `fly auth login`)
+
+### Setup Steps
+
+1. **Create the app on Fly.io**
+
+   ```bash
+   fly apps create adeptusboticus
+   ```
+
+   This registers the app. You can skip this if you've already run `fly launch` before.
+
+2. **Create a persistent volume** (stores `trackers.json`)
+
+   ```bash
+   fly volumes create trackers_data --region iad --size 1
+   ```
+
+   Choose a region closest to you. `iad` (Virginia) is a good default.
+
+3. **Set secrets** (environment variables)
+
+   ```bash
+   fly secrets set \
+     DISCORD_TOKEN="your_discord_bot_token" \
+     WH40K_ID="channel_id_optional" \
+     AOS_ID="channel_id_optional" \
+     HH_ID="channel_id_optional" \
+     BB_ID="channel_id_optional" \
+     RSS_CHECK_INTERVAL_MS="300000"
+   ```
+
+   Only set channel IDs for the categories you want to enable.
+
+4. **Deploy**
+
+   ```bash
+   fly deploy
+   ```
+
+   Fly will build the Docker image remotely on their infrastructure.
+
+5. **Monitor**
+
+   ```bash
+   fly logs -f
+   ```
+
+   This streams logs. Use `fly status` to check VM status.
+
+### Notes
+
+- The `fly.toml` configures the bot as a worker (no HTTP endpoint).
+- The mounted volume at `/data` persists tracker data across restarts and deploys.
+- The free tier provides 1 VM with 256MB RAM—plenty for this bot.
+- The Dockerfile is optimized for small image size using multi-stage build.
+
 ## Category Routing
 
 | Channel Variable | Matches Topics |

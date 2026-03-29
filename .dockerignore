@@ -1,0 +1,37 @@
+## .NET
+bin/
+obj/
+publish/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## IDE
+.vscode/
+.idea/
+.vs/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Git
+.git/
+.gitignore
+*.md
+
+## Env files (secrets)
+.env
+.env.*
+*.env
+
+## Logs
+*.log
+
+## Fly
+.fly/
+
+## Tests
+test/
+tests/
