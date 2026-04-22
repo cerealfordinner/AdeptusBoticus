@@ -32,7 +32,7 @@ public class DataService : IDataService
         }
     }
 
-    public void UpdateLastPostedItemTimestamp(ChannelNameEnum channelName, DateTime time)
+    public void UpdateLastPostedItemTimestamp(ChannelNameEnum channelName, DateTime time, string itemId, string itemUuid)
     {
         lock (_lock)
         {
@@ -42,47 +42,48 @@ public class DataService : IDataService
             if (tracker != null)
             {
                 tracker.LastPostedItemTimeStamp = time;
+                tracker.LastPostedItemId = itemId;
+                tracker.LastPostedItemUuid = itemUuid;
             }
             else
             {
                 _trackers.Add(new CategoryTracker
                 {
                     ChannelName = channelName.ToString(),
-                    LastPostedItemTimeStamp = time
+                    LastPostedItemTimeStamp = time,
+                    LastPostedItemId = itemId,
+                    LastPostedItemUuid = itemUuid
                 });
             }
 
             SaveToFile();
         }
 
-        _logger.LogDebug("Updated timestamp for {ChannelName} to {Time}", channelName, time);
+        _logger.LogDebug("Updated timestamp for {ChannelName} to {Time} (ID: {ItemId}, UUID: {ItemUuid})", channelName, time, itemId, itemUuid);
     }
 
     public void InitializeCategoryTimestamps()
     {
         lock (_lock)
         {
-            var changed = false;
+            var channelNames = Enum.GetNames<ChannelNameEnum>();
+            var missingChannels = channelNames.Where(name =>
+                !_trackers.Any(t => t.ChannelName.Equals(name, StringComparison.OrdinalIgnoreCase))).ToList();
 
-            foreach (ChannelNameEnum channel in Enum.GetValues(typeof(ChannelNameEnum)))
+            if (missingChannels.Any())
             {
-                var exists = _trackers.Any(t =>
-                    t.ChannelName.Equals(channel.ToString(), StringComparison.OrdinalIgnoreCase));
-
-                if (!exists)
+                foreach (var channelName in missingChannels)
                 {
                     _trackers.Add(new CategoryTracker
                     {
-                        ChannelName = channel.ToString(),
-                        LastPostedItemTimeStamp = DateTime.UtcNow
+                        ChannelName = channelName,
+                        LastPostedItemTimeStamp = DateTime.UtcNow,
+                        LastPostedItemId = string.Empty,
+                        LastPostedItemUuid = string.Empty
                     });
-                    changed = true;
-                    _logger.LogInformation("Created new tracker for {ChannelName}", channel);
+                    _logger.LogInformation("Created new tracker for {ChannelName}", channelName);
                 }
-            }
 
-            if (changed)
-            {
                 SaveToFile();
             }
         }
@@ -100,8 +101,21 @@ public class DataService : IDataService
         try
         {
             var json = File.ReadAllText(_filePath);
-            _trackers = JsonSerializer.Deserialize<List<CategoryTracker>>(json, JsonOptions) ?? [];
-            _logger.LogInformation("Loaded {Count} trackers from {FilePath}", _trackers.Count, _filePath);
+            var oldTrackers = JsonSerializer.Deserialize<List<CategoryTracker>>(json, JsonOptions);
+
+            if (oldTrackers != null && oldTrackers.Any())
+            {
+                _logger.LogInformation("Found existing trackers.json with {Count} entries. Deleting and starting fresh.", oldTrackers.Count);
+
+                // Delete the old file to force fresh seeding
+                File.Delete(_filePath);
+
+                // Start with empty state - will be seeded by WarComArticleService
+                _trackers = [];
+                return;
+            }
+
+            _trackers = [];
         }
         catch (Exception ex)
         {

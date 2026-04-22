@@ -52,6 +52,9 @@ public class WarComArticleService : IWarComArticleService
             var postsMade = 0;
             var channelsChecked = 0;
 
+            // Seed trackers with current articles if empty
+            await SeedTrackersWithCurrentArticlesAsync(response.News);
+
             foreach (var channelConfig in _config.Channels)
             {
                 channelsChecked++;
@@ -60,9 +63,9 @@ public class WarComArticleService : IWarComArticleService
                     string.Join(", ", channelConfig.Categories));
 
                 var matchingItems = response.News
-                    .Where(item => channelConfig.Categories.Any(category => item.Topics
-                        .Any(feedTopic => feedTopic.Title
-                            .Equals(category, StringComparison.OrdinalIgnoreCase))));
+                    .Where(item => channelConfig.Categories.Any(category =>
+                        item.Topics.Any(feedTopic =>
+                            feedTopic.Title.Equals(category, StringComparison.OrdinalIgnoreCase))));
 
                 var item = matchingItems.Any()
                     ? matchingItems.MaxBy(item => item.GetParsedDate())
@@ -77,7 +80,8 @@ public class WarComArticleService : IWarComArticleService
                     _logger.LogInformation("Newest matching article for {ChannelName}: {ItemTitle} (Date: {ItemDate}, URL: {Url})",
                         channelConfig.ChannelName, item.Title, itemDateTime, fullUrl);
 
-                    if (categoryTracker == null || itemDateTime > categoryTracker.LastPostedItemTimeStamp)
+                    if (categoryTracker == null ||
+                        (itemDateTime > categoryTracker.LastPostedItemTimeStamp && item.Uuid != categoryTracker.LastPostedItemUuid))
                     {
                         _logger.LogInformation("Article is newer than last posted (Last: {LastPosted}, New: {ArticleDate}) - posting to Discord",
                             categoryTracker?.LastPostedItemTimeStamp, itemDateTime);
@@ -103,7 +107,7 @@ public class WarComArticleService : IWarComArticleService
                             _logger.LogInformation("Successfully posted to Discord channel {ChannelName} (ID: {ChannelId})",
                                 channelConfig.ChannelName, channelConfig.ChannelId);
 
-                            _dataService.UpdateLastPostedItemTimestamp(channelConfig.ChannelName, itemDateTime);
+                            _dataService.UpdateLastPostedItemTimestamp(channelConfig.ChannelName, itemDateTime, item.Id, item.Uuid);
                         }
                         catch (Exception ex)
                         {
@@ -113,8 +117,12 @@ public class WarComArticleService : IWarComArticleService
                     }
                     else
                     {
-                        _logger.LogInformation("Article is not newer than last posted for {ChannelName}. Last posted: {LastPosted}, Article date: {ArticleDate} - skipping",
-                            channelConfig.ChannelName, categoryTracker?.LastPostedItemTimeStamp, itemDateTime);
+                        var reason = item.Uuid == categoryTracker.LastPostedItemUuid
+                            ? "Article UUID already posted"
+                            : "Article is older than last posted";
+
+                        _logger.LogInformation("Skipping article for {ChannelName}. {Reason}. Article date: {ArticleDate}, UUID: {ArticleUuid}",
+                            channelConfig.ChannelName, reason, itemDateTime, item.Uuid);
                     }
                 }
                 else
@@ -132,6 +140,39 @@ public class WarComArticleService : IWarComArticleService
             var duration = DateTime.UtcNow - startTime;
             _logger.LogError(ex, "Article polling cycle failed after {Duration}ms", duration.TotalMilliseconds);
             throw;
+        }
+    }
+
+    private async Task SeedTrackersWithCurrentArticlesAsync(List<WarComArticle> allArticles)
+    {
+        foreach (var channelConfig in _config.Channels)
+        {
+            var tracker = _dataService.GetTracker(channelConfig.ChannelName);
+
+            // Skip if tracker already has UUID (not empty)
+            if (tracker?.LastPostedItemUuid != null)
+                continue;
+
+            var matchingItems = allArticles
+                .Where(item => channelConfig.Categories.Any(category =>
+                    item.Topics.Any(feedTopic =>
+                        feedTopic.Title.Equals(category, StringComparison.OrdinalIgnoreCase))));
+
+            var newestItem = matchingItems.MaxBy(item => item.GetParsedDate());
+
+            if (newestItem != null)
+            {
+                var itemDateTime = newestItem.GetParsedDate().ToUniversalTime();
+
+                _dataService.UpdateLastPostedItemTimestamp(
+                    channelConfig.ChannelName,
+                    itemDateTime,
+                    newestItem.Id,
+                    newestItem.Uuid);
+
+                _logger.LogInformation("Seeded tracker for {ChannelName} with current article: {Title} (UUID: {Uuid})",
+                    channelConfig.ChannelName, newestItem.Title, newestItem.Uuid);
+            }
         }
     }
 }

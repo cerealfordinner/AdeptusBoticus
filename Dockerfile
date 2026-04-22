@@ -21,10 +21,11 @@ RUN dotnet publish "AdeptusBoticus.csproj" -c Release \
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 
-# Install basic dependencies
+# Install basic dependencies + vim for debugging
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libicu72 \
+    vim \
     && rm -rf /var/lib/apt/lists/* \
     && ldconfig
 

@@ -28,6 +28,12 @@ public class WarComArticle
     [JsonPropertyName("uri")]
     public string Uri { get; set; } = string.Empty;
 
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("uuid")]
+    public string Uuid { get; set; } = string.Empty;
+
     public DateTime GetParsedDate()
     {
         if (DateTime.TryParseExact(Date, "dd MMM yy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dt))
