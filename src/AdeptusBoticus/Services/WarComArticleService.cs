@@ -92,6 +92,8 @@ public class WarComArticleService : IWarComArticleService
                             thumbnailUrl = $"https://assets.warhammer-community.com/{item.Image.Path}";
                         }
 
+                        _logger.LogDebug("Thumbnail URL: {ThumbnailUrl}", thumbnailUrl);
+
                         var embed = new DiscordEmbedBuilder
                         {
                             Title = item.Title.StripHtmlTags(),
