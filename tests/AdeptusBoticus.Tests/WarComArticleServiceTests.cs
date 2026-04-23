@@ -64,7 +64,7 @@ public class WarComArticleServiceTests
             Arg.Any<DiscordEmbed>()
         );
 
-        _dataService.Received(2).UpdateLastPostedItemTimestamp(ChannelNameEnum.WH40K, Arg.Any<DateTime>(), Arg.Any<string>(), Arg.Any<string>());
+        _dataService.Received(1).UpdateLastPostedItemUuid(ChannelNameEnum.WH40K, Arg.Any<string>());
     }
 
     [Fact]
@@ -76,12 +76,10 @@ public class WarComArticleServiceTests
 
         _articleReader.ReadArticlesAsync(_config.FeedUrl).Returns(response);
 
-        // Tracker has a date from the distant future
+        // Tracker has a UUID from the sample response
         _dataService.GetTracker(ChannelNameEnum.WH40K).Returns(new CategoryTracker
         {
             ChannelName = "WH40K",
-            LastPostedItemTimeStamp = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            LastPostedItemId = "old-id",
             LastPostedItemUuid = "jyswoccs"  // UUID of one of the 40k articles in sample response
         });
 
@@ -90,6 +88,6 @@ public class WarComArticleServiceTests
 
         // Assert
         await _discordBot.DidNotReceiveWithAnyArgs().SendMessageAsync(default, default!);
-        _dataService.DidNotReceiveWithAnyArgs().UpdateLastPostedItemTimestamp(default, default, default, default);
+        _dataService.DidNotReceiveWithAnyArgs().UpdateLastPostedItemUuid(default, default);
     }
 }

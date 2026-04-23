@@ -36,7 +36,7 @@ public sealed class Program
             _serviceProvider = services.BuildServiceProvider();
 
             var dataService = _serviceProvider.GetRequiredService<IDataService>();
-            dataService.InitializeCategoryTimestamps();
+            dataService.InitializeCategoryTrackers();
 
             var discordBot = _serviceProvider.GetRequiredService<IDiscordBot>();
             await discordBot.ConnectAsync();

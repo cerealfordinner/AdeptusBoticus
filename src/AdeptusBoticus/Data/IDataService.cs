@@ -5,6 +5,7 @@ namespace AdeptusBoticus.Data;
 public interface IDataService
 {
     CategoryTracker? GetTracker(ChannelNameEnum channelName);
-    void UpdateLastPostedItemTimestamp(ChannelNameEnum channelName, DateTime time, string itemId, string itemUuid);
-    void InitializeCategoryTimestamps();
+    string? GetLastPostedUuid(ChannelNameEnum channelName);
+    void UpdateLastPostedItemUuid(ChannelNameEnum channelName, string itemUuid);
+    void InitializeCategoryTrackers();
 }

@@ -33,14 +33,14 @@ public class DataServiceTests
     }
 
     [Fact]
-    public void DataService_InitializeCategoryTimestamps_CreatesAllTrackers()
+    public void DataService_InitializeCategoryTrackers_CreatesAllTrackers()
     {
         var tempFile = Path.Combine(Path.GetTempPath(), $"adeptusboticus_test_{Guid.NewGuid()}.json");
 
         try
         {
             var dataService = new DataService(tempFile, _mockLogger);
-            dataService.InitializeCategoryTimestamps();
+            dataService.InitializeCategoryTrackers();
 
             foreach (ChannelNameEnum channel in Enum.GetValues(typeof(ChannelNameEnum)))
             {
@@ -57,21 +57,20 @@ public class DataServiceTests
     }
 
     [Fact]
-    public void DataService_UpdateLastPostedItemTimestamp_UpdatesExistingTracker()
+    public void DataService_UpdateLastPostedItemUuid_UpdatesExistingTracker()
     {
         var tempFile = Path.Combine(Path.GetTempPath(), $"adeptusboticus_test_{Guid.NewGuid()}.json");
 
         try
         {
             var dataService = new DataService(tempFile, _mockLogger);
-            dataService.InitializeCategoryTimestamps();
+            dataService.InitializeCategoryTrackers();
 
-            var newTime = new DateTime(2025, 6, 15, 12, 0, 0, DateTimeKind.Utc);
-            dataService.UpdateLastPostedItemTimestamp(ChannelNameEnum.WH40K, newTime, "test-id", "test-uuid");
+            dataService.UpdateLastPostedItemUuid(ChannelNameEnum.WH40K, "test-uuid");
 
             var tracker = dataService.GetTracker(ChannelNameEnum.WH40K);
             Assert.NotNull(tracker);
-            Assert.Equal(newTime, tracker.LastPostedItemTimeStamp);
+            Assert.Equal("test-uuid", tracker.LastPostedItemUuid);
         }
         finally
         {
@@ -91,25 +90,25 @@ public class DataServiceTests
 
             // Write data with one instance
             var dataService1 = new DataService(tempFile, _mockLogger);
-            dataService1.InitializeCategoryTimestamps();
-            dataService1.UpdateLastPostedItemTimestamp(ChannelNameEnum.AOS, newTime, "test-id-2", "test-uuid-2");
+            dataService1.InitializeCategoryTrackers();
+            dataService1.UpdateLastPostedItemUuid(ChannelNameEnum.AOS, "test-uuid-2");
 
             // Read it back with a new instance
             var dataService2 = new DataService(tempFile, _mockLogger);
             var tracker = dataService2.GetTracker(ChannelNameEnum.AOS);
 
             // File gets deleted and recreated, so tracker might be null initially
-            // The InitializeCategoryTimestamps will create it
+            // The InitializeCategoryTrackers will create it
             if (tracker == null)
             {
-                dataService2.InitializeCategoryTimestamps();
+                dataService2.InitializeCategoryTrackers();
                 tracker = dataService2.GetTracker(ChannelNameEnum.AOS);
             }
 
             Assert.NotNull(tracker);
-            // When InitializeCategoryTimestamps is called, it updates to current time
-            // So we just verify the tracker exists and has a valid timestamp
-            Assert.True(tracker.LastPostedItemTimeStamp > DateTime.MinValue);
+            // When InitializeCategoryTrackers is called, it creates with empty UUID
+            // So we just verify the tracker exists
+            Assert.NotNull(tracker.LastPostedItemUuid);
         }
         finally
         {

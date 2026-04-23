@@ -10,11 +10,10 @@ public class CategoryTrackerTests
         var tracker = new CategoryTracker
         {
             ChannelName = "WH40K",
-            LastPostedItemTimeStamp = DateTime.UtcNow,
-            LastPostedItemId = "test-id",
             LastPostedItemUuid = "test-uuid"
         };
 
         Assert.Equal("WH40K", tracker.ChannelName);
+        Assert.Equal("test-uuid", tracker.LastPostedItemUuid);
     }
 }

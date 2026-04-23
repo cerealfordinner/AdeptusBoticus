@@ -32,7 +32,17 @@ public class DataService : IDataService
         }
     }
 
-    public void UpdateLastPostedItemTimestamp(ChannelNameEnum channelName, DateTime time, string itemId, string itemUuid)
+    public string? GetLastPostedUuid(ChannelNameEnum channelName)
+    {
+        lock (_lock)
+        {
+            var tracker = _trackers.FirstOrDefault(t =>
+                t.ChannelName.Equals(channelName.ToString(), StringComparison.OrdinalIgnoreCase));
+            return tracker?.LastPostedItemUuid;
+        }
+    }
+
+    public void UpdateLastPostedItemUuid(ChannelNameEnum channelName, string itemUuid)
     {
         lock (_lock)
         {
@@ -41,8 +51,6 @@ public class DataService : IDataService
 
             if (tracker != null)
             {
-                tracker.LastPostedItemTimeStamp = time;
-                tracker.LastPostedItemId = itemId;
                 tracker.LastPostedItemUuid = itemUuid;
             }
             else
@@ -50,8 +58,6 @@ public class DataService : IDataService
                 _trackers.Add(new CategoryTracker
                 {
                     ChannelName = channelName.ToString(),
-                    LastPostedItemTimeStamp = time,
-                    LastPostedItemId = itemId,
                     LastPostedItemUuid = itemUuid
                 });
             }
@@ -59,10 +65,10 @@ public class DataService : IDataService
             SaveToFile();
         }
 
-        _logger.LogDebug("Updated timestamp for {ChannelName} to {Time} (ID: {ItemId}, UUID: {ItemUuid})", channelName, time, itemId, itemUuid);
+        _logger.LogDebug("Updated UUID for {ChannelName} to {ItemUuid}", channelName, itemUuid);
     }
 
-    public void InitializeCategoryTimestamps()
+    public void InitializeCategoryTrackers()
     {
         lock (_lock)
         {
@@ -77,8 +83,6 @@ public class DataService : IDataService
                     _trackers.Add(new CategoryTracker
                     {
                         ChannelName = channelName,
-                        LastPostedItemTimeStamp = DateTime.UtcNow,
-                        LastPostedItemId = string.Empty,
                         LastPostedItemUuid = string.Empty
                     });
                     _logger.LogInformation("Created new tracker for {ChannelName}", channelName);
@@ -105,13 +109,28 @@ public class DataService : IDataService
 
             if (oldTrackers != null && oldTrackers.Any())
             {
-                _logger.LogInformation("Found existing trackers.json with {Count} entries. Deleting and starting fresh.", oldTrackers.Count);
+                // Check if old format (has timestamp or id fields)
+                var hasOldFormat = oldTrackers.Any(t =>
+                    t.GetType().GetProperty("LastPostedItemTimeStamp") != null ||
+                    t.GetType().GetProperty("LastPostedItemId") != null);
 
-                // Delete the old file to force fresh seeding
-                File.Delete(_filePath);
+                if (hasOldFormat)
+                {
+                    _logger.LogInformation("Found old format trackers.json. Converting to new format.");
 
-                // Start with empty state - will be seeded by WarComArticleService
-                _trackers = [];
+                    // Convert to new format
+                    _trackers = oldTrackers.Select(oldTracker => new CategoryTracker
+                    {
+                        ChannelName = oldTracker.ChannelName,
+                        LastPostedItemUuid = oldTracker.LastPostedItemUuid ?? string.Empty
+                    }).ToList();
+
+                    SaveToFile();
+                    return;
+                }
+
+                _logger.LogInformation("Found existing trackers.json with {Count} entries.", oldTrackers.Count);
+                _trackers = oldTrackers;
                 return;
             }
 

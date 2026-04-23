@@ -81,10 +81,10 @@ public class WarComArticleService : IWarComArticleService
                         channelConfig.ChannelName, item.Title, itemDateTime, fullUrl);
 
                     if (categoryTracker == null ||
-                        (itemDateTime > categoryTracker.LastPostedItemTimeStamp && item.Uuid != categoryTracker.LastPostedItemUuid))
+                        item.Uuid != categoryTracker.LastPostedItemUuid)
                     {
-                        _logger.LogInformation("Article is newer than last posted (Last: {LastPosted}, New: {ArticleDate}) - posting to Discord",
-                            categoryTracker?.LastPostedItemTimeStamp, itemDateTime);
+                        _logger.LogInformation("Article is new (UUID: {LastPostedUuid}) - posting to Discord",
+                            categoryTracker?.LastPostedItemUuid);
 
                         string? thumbnailUrl = null;
                         if (!string.IsNullOrEmpty(item.Image?.Path))
@@ -107,7 +107,7 @@ public class WarComArticleService : IWarComArticleService
                             _logger.LogInformation("Successfully posted to Discord channel {ChannelName} (ID: {ChannelId})",
                                 channelConfig.ChannelName, channelConfig.ChannelId);
 
-                            _dataService.UpdateLastPostedItemTimestamp(channelConfig.ChannelName, itemDateTime, item.Id, item.Uuid);
+                            _dataService.UpdateLastPostedItemUuid(channelConfig.ChannelName, item.Uuid);
                         }
                         catch (Exception ex)
                         {
@@ -148,9 +148,10 @@ public class WarComArticleService : IWarComArticleService
         foreach (var channelConfig in _config.Channels)
         {
             var tracker = _dataService.GetTracker(channelConfig.ChannelName);
+            var lastUuid = _dataService.GetLastPostedUuid(channelConfig.ChannelName);
 
             // Skip if tracker already has UUID (not empty)
-            if (tracker?.LastPostedItemUuid != null)
+            if (lastUuid != null)
                 continue;
 
             var matchingItems = allArticles
@@ -162,13 +163,7 @@ public class WarComArticleService : IWarComArticleService
 
             if (newestItem != null)
             {
-                var itemDateTime = newestItem.GetParsedDate().ToUniversalTime();
-
-                _dataService.UpdateLastPostedItemTimestamp(
-                    channelConfig.ChannelName,
-                    itemDateTime,
-                    newestItem.Id,
-                    newestItem.Uuid);
+                _dataService.UpdateLastPostedItemUuid(channelConfig.ChannelName, newestItem.Uuid);
 
                 _logger.LogInformation("Seeded tracker for {ChannelName} with current article: {Title} (UUID: {Uuid})",
                     channelConfig.ChannelName, newestItem.Title, newestItem.Uuid);
